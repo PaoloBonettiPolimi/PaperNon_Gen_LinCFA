@@ -1,0 +1,11 @@
+LINCFA.py:
+
+Class which takes as input a dataframe (or path) and the column name of the target (contained in the dataframe)
+The method print_header shows some rows
+The method compute_corr computes the pearson correlation between two columns
+The method prepare_data standardizes the variables
+The method compute_empirical_bound computes the threshold of correlation considering two variables: the mean of the already selected ones and the candidate to be aggregated (and it standardizes them). It returns the threshold and their correlation
+The method find_neighbors considers the already selected variables to aggregate and returns their neighbours among the ones given by cols [neighbours = points closer than 0.1 on the x and y ax]
+The method find_aggregation performs a cycle on the neighbours found to identify one neigbour that should be aggregated
+The method COMPUTE_CLUSTERS prints and returns the list of aggregations with LinCFA
+NOTE: the method does not need train/validation/test, the training set should be its input
