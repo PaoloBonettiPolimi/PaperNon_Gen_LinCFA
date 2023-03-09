@@ -32,7 +32,8 @@ def compute_wrapper(x_trainVal, y_trainVal,n_features):
            forward=True,
            floating=False,
            scoring = 'r2',
-           cv = 5)
+           cv = 5,
+	   n_jobs=5)
     
     sfs.fit(x_trainVal, y_trainVal)
     return pd.DataFrame(sfs.subsets_).transpose()
