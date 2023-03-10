@@ -15,6 +15,8 @@ import random
 from sklearn import preprocessing
 import pickle
 import argparse
+from joblib import Parallel, delayed
+
 
 ### compute correlation between two random variables
 def compute_corr(x1,x2):
@@ -45,8 +47,30 @@ def squared_aggregation(x):
 def mean_aggregation(x):
     return x.mean(axis=1)
 
+def run_NonLinCFA(x,eps):
+    output = NonLinCFA_anyFunction(x.iloc[:2000,:],'target', eps, 5 , neigh=0, customFunction=mean_aggregation).compute_clusters()
+    
+    aggregate_x = pd.DataFrame()
+    for i in range(len(output)):
+        aggregate_x[i] = mean_aggregation(x[output[i]])
+
+    actual_score = compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:])
+    
+    return [eps,len(output),actual_score]
+
+def run_GenLinCFA(x,eps):
+    output = GenLinCFA_anyFunction(x.iloc[:2000,:],'target', eps1=eps, n_val=5 , neigh=0, eps2=1, customFunction=mean_aggregation).compute_clusters()
+
+    aggregate_x = pd.DataFrame()
+    for i in range(len(output)):
+        aggregate_x[i] = mean_aggregation(x[output[i]])
+        
+    actual_score = compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:])
+
+    return [eps,len(output),actual_score]
+
 def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
-    score = []
+    NonLinCFA_score = [] 
     list_of_length = []
     wrapper_score = []
     LinCFA_score = []
@@ -59,33 +83,15 @@ def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
     for trials in range(n_reps):
         x = pd.DataFrame(x_all[3000*trials:3000*(trials+1)])
         x['target'] = y_all[3000*trials:3000*(trials+1)]
-        
-        for eps in [0.1,0.01,0.001,0.0001,0.00001,0.000001,0.0000001]:
-            output = NonLinCFA_anyFunction(x.iloc[:2000,:],'target', eps, 5 , neigh=0, customFunction=mean_aggregation).compute_clusters()
-            print(len(output))
-            list_of_length.append(len(output))
-            aggregate_x = pd.DataFrame()
+
+    
+        results = Parallel(n_jobs=10)(delayed(run_NonLinCFA)(x,eps) for eps in [0.1,0.01,0.001,0.0001,0.00001,0.000001,0.0000001])
+        print(results)
+        NonLinCFA_score.append(results)
             
-            for i in range(len(output)):
-                aggregate_x[i] = mean_aggregation(x[output[i]])
-            
-            #print(aggregate_x.head())
-            score.append(compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:]))
-            print(score[-1])
-        
-        for eps in [0.375,0.4,0.4125,0.425,0.45]:
-            output = GenLinCFA_anyFunction(x.iloc[:2000,:],'target', eps1=eps, n_val=5 , neigh=0, eps2=1, customFunction=mean_aggregation).compute_clusters()
-            print(len(output))
-            list_of_length_gen.append(len(output))
-            #list_of_length.append(len(output))
-            aggregate_x = pd.DataFrame()
-        
-            for i in range(len(output)):
-                aggregate_x[i] = mean_aggregation(x[output[i]])
-        
-        #print(aggregate_x.head())
-            GenLinCFA_score.append(compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:]))
-            print(GenLinCFA_score[-1])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps) for eps in [0.375,0.4,0.4125,0.425,0.45])
+        print(results)
+        GenLinCFA_score.append(results)
         
         #for i in range(50):
         res = compute_wrapper(x.iloc[:2000,:-1], x.iloc[:2000,-1], 50)
@@ -106,7 +112,7 @@ def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
             #print(aggregate_x.head())
             LinCFA_score.append(compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:]))
             print(LinCFA_score[-1])
-    return score,list_of_length,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score,list_of_length_gen
+    return NonLinCFA_score,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score
 
 
 ### generate a dataset of n samples and standardize the variables x1,x2,x3
@@ -171,9 +177,9 @@ if __name__ == "__main__":
 
     ##################### experiment ########################
 
-    score,list_of_length,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score,list_of_length_gen = linear_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise)
+    NonLinCFA_score,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score = linear_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise)
     
     ##################### save the results ########################
     
     with open(args.results_file, 'wb') as f:  
-        pickle.dump([score,list_of_length,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score,list_of_length_gen], f)
+        pickle.dump([NonLinCFA_score,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score], f)
