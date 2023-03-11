@@ -68,7 +68,7 @@ def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
         x['target'] = y_all[3000*trials:3000*(trials+1)]
         x['target'] = x.apply(lambda x: 1 if x.target>=0 else 0,axis=1)
     
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps) for eps in [0.3,0.325,0.35,0.375,0.4])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps) for eps in [0.3,0.315,0.33,0.35,0.375])
         print(results)
         GenLinCFA_score.append(results)
         
