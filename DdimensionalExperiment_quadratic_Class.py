@@ -2,8 +2,8 @@ import sys
 import pandas as pd
 sys.path.append("../PaperNon_Gen_LinCFA/")
 from NonLinCFA.NonLinCFA import NonLinCFA
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+from sklearn.linear_model import LogisticRegression,LinearRegression
+from sklearn.metrics import r2_score,accuracy_score
 import matplotlib.pyplot as plt
 from NonLinCFA.NonLinCFA_anyFunction import NonLinCFA_anyFunction
 from LinCFA.LinCFA import LinCFA
@@ -17,23 +17,17 @@ import pickle
 import argparse
 from joblib import Parallel, delayed
 
-
-### compute correlation between two random variables
-def compute_corr(x1,x2):
-    return pearsonr(x1,x2)[0]
-
-### compute test R2 score
-def compute_r2(x_train, y_train, x_val, y_val):
-    regr = LinearRegression().fit(x_train,y_train)
+def compute_accuracy(x_train, y_train, x_val, y_val):
+    regr = LogisticRegression().fit(x_train,y_train)
     y_pred = regr.predict(x_val)
-    return r2_score(y_val, y_pred)
+    return accuracy_score(y_val, y_pred)
 
 def compute_wrapper(x_trainVal, y_trainVal,n_features):
-    sfs = SFS(LinearRegression(),
+    sfs = SFS(LogisticRegression(),
            k_features=n_features,
            forward=True,
            floating=False,
-           scoring = 'r2',
+           scoring = 'accuracy',
            cv = 5,
 	   n_jobs=5)
     
@@ -47,17 +41,6 @@ def squared_aggregation(x):
 def mean_aggregation(x):
     return x.mean(axis=1)
 
-def run_NonLinCFA(x,eps,passed_fun):
-    output = NonLinCFA_anyFunction(x.iloc[:2000,:],'target', eps, 5 , neigh=0, customFunction=passed_fun).compute_clusters()
-    
-    aggregate_x = pd.DataFrame()
-    for i in range(len(output)):
-        aggregate_x[i] = passed_fun(x[output[i]])
-
-    actual_score = compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:])
-    
-    return [eps,len(output),actual_score]
-
 def run_GenLinCFA(x,eps,passed_fun):
     output = GenLinCFA_anyFunction(x.iloc[:2000,:],'target', eps1=eps, n_val=5 , neigh=0, eps2=1, customFunction=passed_fun).compute_clusters()
 
@@ -65,7 +48,7 @@ def run_GenLinCFA(x,eps,passed_fun):
     for i in range(len(output)):
         aggregate_x[i] = passed_fun(x[output[i]])
         
-    actual_score = compute_r2(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:])
+    actual_score = compute_accuracy(aggregate_x.iloc[:2000,:], x.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x.loc[:,'target'].iloc[2000:])
 
     return [eps,len(output),actual_score]
 
@@ -82,26 +65,20 @@ def quadratic_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
     wrapper_score_sq = []
 
     x_all,y_all,coeffs = generate_dataset_squared(n_data=3000*10, noise=noise, p1=0.3, p2=0.7, n_variables=n_variables, coeffs=[0])
-    
+    mean_target = np.mean(y_all)
     for trials in range(n_reps):
         x = pd.DataFrame(x_all[3000*trials:3000*(trials+1)])
         x_squared = x**2
         x['target'] = y_all[3000*trials:3000*(trials+1)]
+        x['target'] = x.apply(lambda x: 1 if x.target>=mean_target else 0,axis=1)
         x_squared['target'] = y_all[3000*trials:3000*(trials+1)]
-    
-        results = Parallel(n_jobs=10)(delayed(run_NonLinCFA)(x_squared,eps,mean_aggregation) for eps in [0.1,0.01,0.001,0.0001,0.00001,0.000001,0.0000001])
-        print(results)
-        NonLinCFA_score.append(results)
-        
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x_squared,eps,mean_aggregation) for eps in [0.3,0.2,0.185,0.165,0.15])
+        x_squared['target'] = x_squared.apply(lambda x: 1 if x.target>=mean_target else 0,axis=1)
+
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x_squared,eps,mean_aggregation) for eps in [0.3, 0.2, 0.15, 0.125,0.1])
         print(results)
         GenLinCFA_score.append(results)
 
-        results = Parallel(n_jobs=10)(delayed(run_NonLinCFA)(x,eps,squared_aggregation) for eps in [0.1,0.01,0.001,0.0001,0.00001,0.000001,0.0000001])
-        print(results)
-        NonLinCFA_score_sq.append(results)
-        
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps,squared_aggregation) for eps in [0.3,0.2,0.185,0.165,0.15])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps,squared_aggregation) for eps in [0.3, 0.2, 0.15, 0.125,0.1])
         print(results)
         GenLinCFA_score_sq.append(results)
         
@@ -109,23 +86,10 @@ def quadratic_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
         res = compute_wrapper(x_squared.iloc[:2000,:-1], x_squared.iloc[:2000,-1], 50)
         for i in range(50):
             x_wrapper_red = x_squared[list(res.loc[i+1,'feature_names'])]
-            wrapper_score.append(compute_r2(x_wrapper_red.iloc[:2000],x_squared.loc[:,'target'].iloc[:2000],x_wrapper_red.iloc[2000:],x_squared.loc[:,'target'].iloc[2000:]))
+            wrapper_score.append(compute_accuracy(x_wrapper_red.iloc[:2000],x_squared.loc[:,'target'].iloc[:2000],x_wrapper_red.iloc[2000:],x_squared.loc[:,'target'].iloc[2000:]))
             print(i+1,wrapper_score[-1])
         
-        # LinCFA
-        for eps in [0]:
-            output = LinCFA(x_squared.iloc[:2000,:],'target', eps, neigh=0).compute_clusters()
-            print(len(output))
-            list_of_length_lin.append(len(output))
-            aggregate_x = pd.DataFrame()
-            
-            for i in range(len(output)):
-                aggregate_x[i] = mean_aggregation(x_squared[output[i]])
-            
-            #print(aggregate_x.head())
-            LinCFA_score.append(compute_r2(aggregate_x.iloc[:2000,:], x_squared.loc[:,'target'].iloc[:2000], aggregate_x.iloc[2000:,:], x_squared.loc[:,'target'].iloc[2000:]))
-            print(LinCFA_score[-1])
-    return NonLinCFA_score,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score,NonLinCFA_score_sq,GenLinCFA_score_sq
+    return GenLinCFA_score,GenLinCFA_score_sq,wrapper_score
 
 ### generate a dataset of n samples and standardize the variables x1,x2,x3
 def generate_dataset_squared(n_data=3000, noise=1, p1=0.5, p2=0.5, n_variables=10, coeffs=[0]):
@@ -165,9 +129,9 @@ if __name__ == "__main__":
 
     ##################### experiment ########################
 
-    NonLinCFA_score,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score,NonLinCFA_score_sq,GenLinCFA_score_sq = quadratic_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise)
+    GenLinCFA_score,GenLinCFA_score_sq,wrapper_score = quadratic_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise)
     
     ##################### save the results ########################
     
     with open(args.results_file, 'wb') as f:  
-        pickle.dump([NonLinCFA_score,wrapper_score,LinCFA_score,list_of_length_lin,GenLinCFA_score,NonLinCFA_score_sq,GenLinCFA_score_sq], f)
+        pickle.dump([GenLinCFA_score,GenLinCFA_score_sq,wrapper_score], f)
