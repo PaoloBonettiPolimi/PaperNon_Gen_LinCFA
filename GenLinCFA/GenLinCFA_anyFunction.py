@@ -75,7 +75,7 @@ class GenLinCFA_anyFunction():
             #if ((abs(cov_x1_y)+abs(cov_x2_y)-abs(cov_xmean_y)<=self.eps1) & (var_x1x2-var_xmean<=self.eps2)): return i
             #print((abs(cov_x1_y)+abs(cov_x2_y)-0.5*var_x1x2))
             #print(abs(cov_x1_y)+abs(cov_x2_y)-self.eps1*0.5*var_x1x2)
-            if ((abs(cov_x1_y)+abs(cov_x2_y)-self.eps2*0.5*var_xmean-self.eps1*(abs(cov_xmean_y)+self.eps2*0.5*var_x1x2))<=0): return i
+            if ((abs(cov_x1_y)+abs(cov_x2_y)+self.eps2*0.5*var_xmean-self.eps1*(abs(cov_xmean_y)+self.eps2*0.5*var_x1x2))<=0): return i
         return ''
 
     def compute_scores(self, column1_list, column2):
