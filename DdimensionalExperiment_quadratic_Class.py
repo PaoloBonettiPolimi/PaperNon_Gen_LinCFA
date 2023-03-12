@@ -74,11 +74,11 @@ def quadratic_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
         x_squared['target'] = y_all[3000*trials:3000*(trials+1)]
         x_squared['target'] = x_squared.apply(lambda x: 1 if x.target>=mean_target else 0,axis=1)
 
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x_squared,eps,mean_aggregation) for eps in [0.3, 0.2, 0.15, 0.125,0.1])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x_squared,eps,mean_aggregation) for eps in [0.15, 0.1, 0.075, 0.05,0.025])
         print(results)
         GenLinCFA_score.append(results)
 
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps,squared_aggregation) for eps in [0.3, 0.2, 0.15, 0.125,0.1])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps,squared_aggregation) for eps in [0.15, 0.1, 0.075, 0.05,0.025])
         print(results)
         GenLinCFA_score_sq.append(results)
         
