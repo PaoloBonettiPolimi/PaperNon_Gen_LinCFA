@@ -52,7 +52,7 @@ def run_GenLinCFA(x,eps):
 
     return [eps,len(output),actual_score]
 
-def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
+def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10, hyper=[0.5]):
     NonLinCFA_score = [] 
     list_of_length = []
     wrapper_score = []
@@ -68,7 +68,7 @@ def linear_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
         x['target'] = y_all[3000*trials:3000*(trials+1)]
         x['target'] = x.apply(lambda x: 1 if x.target>=0 else 0,axis=1)
     
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps) for eps in [0.3,0.315,0.33,0.35,0.375])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps) for eps in hyper)
         print(results)
         GenLinCFA_score.append(results)
         
@@ -138,13 +138,14 @@ if __name__ == "__main__":
     parser.add_argument("--p1", default=0.3, type=float)
     parser.add_argument("--p2", default=0.7, type=float)
     parser.add_argument("--results_file", default='res.pkl')
+    parser.add_argument("--hyperparameter", nargs="*", default=[0.5], type=float)
 
     args = parser.parse_args()
     print(args)
 
     ##################### experiment ########################
 
-    wrapper_score,GenLinCFA_score = linear_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise)
+    wrapper_score,GenLinCFA_score = linear_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise, hyper = args.hyperparameter)
     
     ##################### save the results ########################
     
