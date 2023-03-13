@@ -42,7 +42,7 @@ def mean_aggregation(x):
     return x.mean(axis=1)
 
 def run_GenLinCFA(x,eps,passed_fun):
-    output = GenLinCFA_anyFunction(x.iloc[:2000,:],'target', eps1=eps, n_val=5 , neigh=0, eps2=1, customFunction=passed_fun).compute_clusters()
+    output = GenLinCFA_anyFunction(x.iloc[:2000,:],'target', eps1=eps, n_val=5 , neigh=0, eps2=1/2, customFunction=passed_fun).compute_clusters()
 
     aggregate_x = pd.DataFrame()
     for i in range(len(output)):
@@ -52,7 +52,7 @@ def run_GenLinCFA(x,eps,passed_fun):
 
     return [eps,len(output),actual_score]
 
-def quadratic_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
+def quadratic_experiment_noResampling(n_reps=10, n_variables=100, noise=10, hyper=[0.5]):
     NonLinCFA_score = [] 
     list_of_length = []
     wrapper_score = []
@@ -74,11 +74,11 @@ def quadratic_experiment_noResampling(n_reps=10, n_variables=100, noise=10):
         x_squared['target'] = y_all[3000*trials:3000*(trials+1)]
         x_squared['target'] = x_squared.apply(lambda x: 1 if x.target>=mean_target else 0,axis=1)
 
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x_squared,eps,mean_aggregation) for eps in [0.15, 0.1, 0.075, 0.05,0.025])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x_squared,eps,mean_aggregation) for eps in hyper)
         print(results)
         GenLinCFA_score.append(results)
 
-        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps,squared_aggregation) for eps in [0.15, 0.1, 0.075, 0.05,0.025])
+        results = Parallel(n_jobs=10)(delayed(run_GenLinCFA)(x,eps,squared_aggregation) for eps in hyper)
         print(results)
         GenLinCFA_score_sq.append(results)
         
@@ -123,13 +123,14 @@ if __name__ == "__main__":
     parser.add_argument("--p1", default=0.3, type=float)
     parser.add_argument("--p2", default=0.7, type=float)
     parser.add_argument("--results_file", default='res.pkl')
+    parser.add_argument("--hyperparameter", nargs="*", default=[0.5], type=float)
 
     args = parser.parse_args()
     print(args)
 
     ##################### experiment ########################
 
-    GenLinCFA_score,GenLinCFA_score_sq,wrapper_score = quadratic_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise)
+    GenLinCFA_score,GenLinCFA_score_sq,wrapper_score = quadratic_experiment_noResampling(n_reps=args.n_repetitions, n_variables=args.n_variables, noise=args.noise, hyper = args.hyperparameter)
     
     ##################### save the results ########################
     
