@@ -104,7 +104,9 @@ class GenLinCFA():
                 cols = cols[cols.values!=col_to_aggr]
             else:
                 output.append(actual_cluster)
+                print(len(actual_cluster))
                 actual_cluster = []
         if (len(actual_cluster)>0): output.append(actual_cluster)
+        
         return output
     
