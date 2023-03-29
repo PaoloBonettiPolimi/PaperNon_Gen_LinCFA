@@ -35,7 +35,8 @@ def run_NonLinCFA(df_trainVal,df_test,target_df_trainVal,target_df_test,n_reps,c
     curr_df_trainVal = df_trainVal[np.random.default_rng(seed=curr_seed).permutation(df_trainVal.columns.values)]
     curr_df_test = df_test[np.random.default_rng(seed=curr_seed).permutation(df_test.columns.values)]
     curr_df_trainVal_withTar = pd.concat((curr_df_trainVal,target_df_trainVal), axis=1)
-        
+    curr_df_test_withTar = pd.concat((curr_df_test,target_df_test), axis=1)
+
     output = NonLinCFA.NonLinCFA(curr_df_trainVal_withTar,'mean_std', eps, -5 , 0).compute_clusters()
         
     aggregate_trainVal = pd.DataFrame()
@@ -46,7 +47,7 @@ def run_NonLinCFA(df_trainVal,df_test,target_df_trainVal,target_df_test,n_reps,c
         aggregate_test[str(i)] = curr_df_test[output[i]].mean(axis=1)
         aggregate_test = aggregate_test.copy()
     print(f'Number of aggregated features: {len(output)}, with epsilon and seed {eps}{curr_seed}\n')
-    r2 = compare_methods(aggregate_trainVal, aggregate_test, target_df_trainVal, target_df_test, list(aggregate_trainVal.columns))
+    r2 = compare_methods(aggregate_trainVal, aggregate_test, curr_df_trainVal_withTar, curr_df_test_withTar, list(aggregate_trainVal.columns))
     #res.append([eps,curr_seed,len(output),r2])
     return [eps,curr_seed,len(output),r2]
 
@@ -82,7 +83,7 @@ if __name__ == "__main__":
     target_df_test = df.iloc[-392:,-1]
 
     ##################### experiment ########################
-    res = run_NonLinCFA_parallel(df_trainVal,df_test,target_df_trainVal,target_df_test,args.n_repetitions)
+    res = run_NonLinCFA_parallel(df_trainVal.iloc[:,0:10],df_test.iloc[:,0:10],target_df_trainVal,target_df_test,args.n_repetitions)
     
     ##################### save the results ########################
     
