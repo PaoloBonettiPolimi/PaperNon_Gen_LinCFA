@@ -57,7 +57,7 @@ def run_NonLinCFA_parallel(df_trainVal,df_test,target_df_trainVal,target_df_test
         for j in [0,1,2,3,4]:
             l.append([i,j])
 
-        result = Parallel(n_jobs=-1)(delayed(run_NonLinCFA)(df_trainVal,df_test,target_df_trainVal,target_df_test,n_reps,curr_seed,eps) for eps,curr_seed in l)
+    result = Parallel(n_jobs=5)(delayed(run_NonLinCFA)(df_trainVal,df_test,target_df_trainVal,target_df_test,n_reps,curr_seed,eps) for eps,curr_seed in l)
 
     return result
 
