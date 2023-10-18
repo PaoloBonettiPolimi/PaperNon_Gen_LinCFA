@@ -99,9 +99,10 @@ class GenLinCFA():
                 cols = cols[cols.values!=actual_col] # remove actual column from the ones not assigned yet
 
             col_to_aggr = self.find_aggregation(actual_cluster, cols)
-            if col_to_aggr != '':
+            if (col_to_aggr != '') & (len(actual_cluster)<500):
                 actual_cluster.append(col_to_aggr)
                 cols = cols[cols.values!=col_to_aggr]
+                print(len(actual_cluster))
             else:
                 output.append(actual_cluster)
                 print(len(actual_cluster))
